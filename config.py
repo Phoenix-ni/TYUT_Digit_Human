@@ -2,23 +2,23 @@
 # Date: 2025-19-42
 OPENAI_CLIENTS = {
     "client2": {
-        "api_key": "ak_10a9lj0jQ2xq33Y47c2CE3IV1Bm7g", 
+        "api_key": "***********************", # 请替换为你的大语言模型API Key 
         "base_url": "https://api.longcat.chat/openai"
     }
 }
 
 # TTS配置
 TTS_CONFIG = {
-    "api_key": "04ae05260c06dda9cc63e7175fe20902de568afe80e4392377d81113941b275a",
-    "reference_id": "5bc7fb18-a5c4-469f-8473-4bf24dde5b96",
+    "api_key": "*******************************", # 请替换为你的TTS服务API Key
+    "reference_id": "************************", # 请替换为你的TTS服务Reference ID
     "url": "https://fishspeech.net/api/open/tts"
 }
 
 # 模型配置
 MODEL_CONFIG = {
     "whisper_model": "small",
-    "embedding_model": "/home/zyb/.cache/huggingface/hub/models--sentence-transformers--all-MiniLM-L6-v2/snapshots/c9745ed1d9f207416be6d2e6f8de32d1f16199bf/",
-    "knowledge_base_path": "/home/zyb/百度飞桨领航团/组织/TYUT_Digit/知识库.md"
+    "embedding_model": "all-MiniLM-L6-v2",
+    "knowledge_base_path": "/知识库.md" # 请替换为你的知识库文件路径
 }
 
 # 音频配置
