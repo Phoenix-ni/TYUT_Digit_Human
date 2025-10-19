@@ -1,0 +1,2 @@
+# TYUT_Digit_Human
+由TYUT创新学社自主研发的数字人招新助手
