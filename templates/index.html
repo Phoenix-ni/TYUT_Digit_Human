@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TYUT 创新学社招新助手</title>
+    <!-- Add Socket.IO client library -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #10a37f;
+            --secondary-color: #1a7f64;
+            --success-color: #10a37f;
+            --danger-color: #ff375f;
+            --warning-color: #ffb300;
+            --light-color: #f8f9fa;
+            --dark-color: #000000;
+            --gray-color: #8e8ea0;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            --transition: all 0.3s ease;
+            --gradient-start: rgba(16, 163, 127, 0.1);
+            --gradient-end: rgba(16, 163, 127, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dark-color);
+            min-height: 100vh;
+            padding: 0;
+            color: var(--light-color);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 星星背景效果 */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle var(--twinkle-duration, 3s) infinite ease-in-out;
+            opacity: 0;
+        }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: var(--twinkle-opacity, 0.8);
+                transform: scale(1);
+            }
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1400px;
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 15px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        h1 {
+            color: var(--light-color);
+            font-weight: 700;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+        }
+
+        .description {
+            color: var(--gray-color);
+            font-size: 1rem;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+
+        .digital-human-container {
+            width: 75vh;
+            height: 80vh;
+            max-width: 800px;
+            max-height: 80vh;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            background-color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+            margin-top: -20px;
+        }
+
+        .response-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 400px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            box-shadow: var(--box-shadow);
+            z-index: 2;
+            backdrop-filter: blur(5px);
+            border-radius: 0;
+        }
+
+        /* 自定义滚动条样式 */
+        .response-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .response-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .response-container::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .response-container::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-color);
+        }
+
+        /* 状态区域样式 - 移动到语音识别结果栏左上方 */
+        .status-container {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .status {
+            padding: 8px 15px;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+            min-width: 200px;
+            font-size: 0.9rem;
+        }
+
+        .status::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .recording {
+            color: #ffb300;
+        }
+
+        .recording::before {
+            background-color: #ffb300;
+            box-shadow: 0 0 8px #ffb300;
+            animation: pulse 1.5s infinite;
+        }
+
+        .processing {
+            color: var(--success-color);
+        }
+
+        .processing::before {
+            background-color: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 163, 127, 0.7);
+            }
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(16, 163, 127, 0);
+            }
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 163, 127, 0);
+            }
+        }
+
+        /* 语音识别区域样式 */
+        .transcription-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .section-label {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .transcription-text {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            min-height: 40px;
+            color: var(--light-color);
+            font-size: 1.1rem;
+            line-height: 1.5;
+            outline: none;
+            transition: var(--transition);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .transcription-text:focus {
+            border-color: var(--primary-color);
+            background: rgba(16, 163, 127, 0.1);
+            box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+        }
+
+        .edit-hint {
+            color: var(--gray-color);
+            font-size: 0.8rem;
+            margin-top: 5px;
+            text-align: right;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .transcription-text:focus + .edit-hint {
+            opacity: 1;
+        }
+
+        .ai-response-section {
+            flex-grow: 1;
+        }
+
+        .stay-video, .hear-video, .speak-video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* 水印遮罩层样式 */
+        .watermark-cover {
+            position: absolute;
+            width: 140px;
+            height: 90px;
+            background-color: rgb(0, 0, 0);
+            z-index: 10; /* 确保在视频图层之上 */
+            top: 60px; /* 根据需要调整位置 */
+            left: 15px; /* 根据需要调整位置 */
+            border-radius: 2px;
+            pointer-events: none; /* 确保不会干扰视频的点击事件 */
+        }
+
+        .ai-response {
+            color: var(--light-color);
+            white-space: pre-wrap;
+            font-size: 1.2rem;
+            line-height: 1.7;
+            flex-grow: 1;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2em;
+            background-color: var(--success-color);
+            margin-left: 2px;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .key-hint {
+            text-align: center;
+            color: var(--gray-color);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: auto;
+            padding: 15px 0;
+            color: var(--gray-color);
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .recording-indicator {
+            position: fixed;
+            bottom: 120px;
+            right: 30px;
+            width: 20px;
+            height: 20px;
+            background-color: var(--danger-color);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--danger-color);
+            animation: pulse 1.5s infinite;
+            display: none;
+        }
+
+        /* 抽奖相关样式 */
+        .lottery-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ff8e53);
+            margin-top: 10px;
+            font-size: 1rem;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .lottery-btn:hover {
+            background: linear-gradient(135deg, #ff5252, #ff7b3a);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+        }
+
+        .lottery-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .lottery-content {
+            background: linear-gradient(135deg, #2d3748, #4a5568);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--primary-color);
+        }
+
+        .lottery-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 20px;
+            border-radius: 18px 18px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+
+        .lottery-header h2 {
+            margin: 0;
+            font-size: 1.8rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .close-btn {
+            font-size: 2rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .close-btn:hover {
+            transform: scale(1.2);
+            color: #ffd700;
+        }
+
+        .lottery-body {
+            padding: 30px;
+        }
+
+        .prize-display {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .prize-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .prize-item:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-5px);
+        }
+
+        .prize-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .prize-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--light-color);
+        }
+
+        .prize-count {
+            color: var(--gray-color);
+            font-size: 0.9rem;
+        }
+
+        .lottery-wheel-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto 30px;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #ff6b6b 0deg 45deg,
+                #4ecdc4 45deg 90deg,
+                #45b7d1 90deg 135deg,
+                #96ceb4 135deg 180deg,
+                #ff6b6b 180deg 225deg,
+                #4ecdc4 225deg 270deg,
+                #45b7d1 270deg 315deg,
+                #96ceb4 315deg 360deg
+            );
+            position: relative;
+            transition: transform 4s cubic-bezier(0.2, 0.8, 0.3, 1);
+            box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1),
+                        inset 0 0 0 8px rgba(255, 255, 255, 0.1);
+        }
+
+        .wheel-item {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: 100% 100%;
+            left: 0;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            transform: rotate(22.5deg);
+        }
+
+        .wheel-item:nth-child(1) { transform: rotate(22.5deg); }
+        .wheel-item:nth-child(2) { transform: rotate(67.5deg); }
+        .wheel-item:nth-child(3) { transform: rotate(112.5deg); }
+        .wheel-item:nth-child(4) { transform: rotate(157.5deg); }
+        .wheel-item:nth-child(5) { transform: rotate(202.5deg); }
+        .wheel-item:nth-child(6) { transform: rotate(247.5deg); }
+        .wheel-item:nth-child(7) { transform: rotate(292.5deg); }
+        .wheel-item:nth-child(8) { transform: rotate(337.5deg); }
+
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ffd700, #ffa500);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+            transition: var(--transition);
+            z-index: 10;
+        }
+
+        .wheel-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(255, 215, 0, 0.6);
+        }
+
+        .wheel-center:active {
+            transform: translate(-50%, -50%) scale(0.95);
+        }
+
+        .spin-text {
+            color: #333;
+            font-weight: 700;
+            font-size: 1.2rem;
+            text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+        }
+
+        .result-area {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .lottery-result {
+            font-size: 1.5rem;
+            font-weight: 700;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 2px solid transparent;
+            transition: var(--transition);
+        }
+
+        .lottery-result.win {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+            color: #ffd700;
+            animation: pulse 1s infinite;
+        }
+
+        .lottery-footer {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 18px 18px;
+            color: var(--gray-color);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .digital-human-container {
+                width: 90vw;
+                height: 120vw;
+                max-height: 70vh;
+                margin-top: -20px;
+            }
+            
+            .response-container {
+                height: 200px;
+                bottom: 20px;
+            }
+            
+            .app-container {
+                padding: 10px;
+                grid-template-rows: auto 1fr auto;
+            }
+            
+            .transcription-text {
+                font-size: 1rem;
+                padding: 10px;
+            }
+
+            /* 抽奖响应式设计 */
+            .lottery-content {
+                width: 95%;
+                margin: 10px;
+            }
+            
+            .lottery-header h2 {
+                font-size: 1.4rem;
+            }
+            
+            .prize-display {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .lottery-wheel-container {
+                width: 250px;
+                height: 250px;
+            }
+            
+            .wheel-center {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .spin-text {
+                font-size: 1rem;
+            }
+        }
+
+        /* 针对超小屏幕的额外调整 */
+        @media (max-width: 480px) {
+            .digital-human-container {
+                width: 95vw;
+                height: 127vw;
+                max-height: 60vh;
+                margin-top: -10px;
+            }
+            
+            .response-container {
+                height: 180px;
+                padding: 15px;
+                bottom: 10px;
+            }
+            
+            .ai-response {
+                font-size: 1rem;
+            }
+            
+            .transcription-section {
+                margin-bottom: 15px;
+            }
+            
+            .status {
+                min-width: 150px;
+                font-size: 0.8rem;
+                padding: 6px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 星星背景 -->
+    <div class="stars" id="stars"></div>
+    
+    <div class="app-container">
+        <div class="header">
+            <h1>TYUT 创新学社招新助手</h1>
+            <p class="description">语音驱动AI对话 - 按住空格键说话</p>
+            <button id="lotteryButton" class="lottery-btn">🎁 参与招新抽奖</button>
+            <button id="manualInputBtn" class="lottery-btn" style="margin-left: 10px;">📝 手动输入</button>
+        </div>
+        
+        <div class="main-content">
+            <div class="digital-human-container" id="digitalHumanContainer">
+                <!-- 预加载所有stay视频 -->
+                <video id="stayVideo1" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay1.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo2" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay2.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo3" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay3.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo4" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay4.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo5" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay5.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo6" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay6.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo7" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay7.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo8" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay8.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo9" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay9.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo10" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay10.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo11" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay11.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo12" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay12.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo13" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay13.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo14" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay14.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo15" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay15.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo16" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay16.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo17" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay17.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="stayVideo18" class="stay-video" style="display: none;" playsinline muted>
+                    <source src="/static/2D_Live/stay18.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+
+                <video id="hearVideo" class="hear-video" style="display: none;" loop playsinline muted>
+                    <source src="/static/2D_Live/hear.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                <video id="speakVideo" class="speak-video" style="display: none;" loop playsinline muted>
+                    <source src="/static/2D_Live/speak.mp4" type="video/mp4">
+                    您的浏览器不支持视频播放
+                </video>
+                
+                <!-- 水印遮罩层 -->
+                <div id="watermarkCover" class="watermark-cover"></div>
+            </div>
+        </div>
+        
+        <div class="key-hint">
+            提示: 按住空格键开始录音，松开停止
+        </div>
+        
+        <!-- 响应容器 -->
+        <div class="response-container">
+            <!-- 状态提示区域 - 移动到语音识别结果栏左上方 -->
+            <div class="status-container">
+                <div id="status" class="status">等待语音输入...</div>
+            </div>
+            
+            <!-- 语音识别结果显示和编辑区域 -->
+            <div class="transcription-section">
+                <div class="section-label">语音识别结果:</div>
+                <div id="transcriptionText" class="transcription-text" contenteditable="true"></div>
+                <div class="edit-hint">按 Enter 确认修改，按 Esc 取消</div>
+            </div>
+            
+            <div class="ai-response-section">
+                <div class="section-label">AI回复:</div>
+                <div id="aiResponse" class="ai-response"></div>
+                <span id="typingCursor" class="typing-cursor" style="display: none;"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 抽奖模态框 -->
+    <div id="lotteryModal" class="lottery-modal" style="display: none;">
+        <div class="lottery-content">
+            <div class="lottery-header">
+                <h2>🎁 TYUT 创新学社 招新抽奖 🎁</h2>
+                <span class="close-btn" id="closeLottery">&times;</span>
+            </div>
+            
+            <div class="lottery-body">
+                <div class="prize-display" id="prizeDisplay">
+                    <div class="prize-item" data-prize="keychain">
+                        <div class="prize-icon">🔑</div>
+                        <div class="prize-name">定制钥匙扣</div>
+                        <div class="prize-count" id="keychainCount">98</div>
+                    </div>
+                    <div class="prize-item" data-prize="mousepad">
+                        <div class="prize-icon">🖱️</div>
+                        <div class="prize-name">精美鼠标垫</div>
+                        <div class="prize-count" id="mousepadCount">46</div>
+                    </div>
+                    <div class="prize-item" data-prize="cup">
+                        <div class="prize-icon">🏆</div>
+                        <div class="prize-name">限量水杯</div>
+                        <div class="prize-count" id="cupCount">1</div>
+                    </div>
+                    <div class="prize-item" data-prize="candy">
+                        <div class="prize-icon">🍬</div>
+                        <div class="prize-name">饼干糖果</div>
+                        <div class="prize-count">不限量</div>
+                    </div>
+                </div>
+                
+                <div class="lottery-wheel-container">
+                    <div class="wheel" id="lotteryWheel">
+                        <div class="wheel-item" data-prize="keychain">钥匙扣</div>
+                        <div class="wheel-item" data-prize="mousepad">鼠标垫</div>
+                        <div class="wheel-item" data-prize="cup">水杯</div>
+                        <div class="wheel-item" data-prize="candy">糖果</div>
+                        <div class="wheel-item" data-prize="keychain">钥匙扣</div>
+                        <div class="wheel-item" data-prize="mousepad">鼠标垫</div>
+                        <div class="wheel-item" data-prize="candy">糖果</div>
+                        <div class="wheel-item" data-prize="keychain">钥匙扣</div>
+                    </div>
+                    <div class="wheel-center" id="spinButton">
+                        <div class="spin-text">抽奖</div>
+                    </div>
+                </div>
+                
+                <div class="result-area">
+                    <div id="lotteryResult" class="lottery-result"></div>
+                    <button id="confirmResult" class="lottery-btn" style="display: none;">确认领取</button>
+                </div>
+            </div>
+            
+            <div class="lottery-footer">
+                <p>欢迎参与招新抽奖，祝你好运！</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 创建星星背景
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const starCount = 100; // 星星数量
+            
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.classList.add('star');
+                
+                // 随机位置
+                const left = Math.random() * 100;
+                const top = Math.random() * 100;
+                
+                // 随机大小 (1-3px)
+                const size = Math.random() * 4 + 1;
+                
+                // 随机闪烁持续时间 (2-5秒)
+                const duration = Math.random() * 3 + 2;
+                
+                // 随机闪烁延迟 (0-5秒)
+                const delay = Math.random() * 5;
+                
+                // 随机闪烁强度 (0.3-0.9)
+                const opacity = Math.random() * 0.6 + 0.3;
+                
+                star.style.left = `${left}%`;
+                star.style.top = `${top}%`;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                star.style.setProperty('--twinkle-duration', `${duration}s`);
+                star.style.setProperty('--twinkle-opacity', opacity);
+                star.style.animationDelay = `${delay}s`;
+                
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // 转录文本区域的焦点设置
+        function setupTranscriptionFocus() {
+            setTimeout(() => {
+                transcriptionText.focus();
+                placeCaretAtEnd(transcriptionText);
+                // 添加边框高亮提示
+                transcriptionText.style.border = '2px solid var(--primary-color)';
+                transcriptionText.style.background = 'rgba(16, 163, 127, 0.1)';
+                
+                // 3秒后恢复普通样式
+                setTimeout(() => {
+                    transcriptionText.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                    transcriptionText.style.background = 'rgba(255, 255, 255, 0.1)';
+                }, 3000);
+            }, 300);
+        }
+
+        // 辅助函数：将光标置于文本末尾
+        function placeCaretAtEnd(element) {
+            element.focus();
+            if (typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                range.collapse(false);
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(range);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // 创建星星背景
+            createStars();
+            
+            // 获取元素
+            const digitalHumanContainer = document.getElementById('digitalHumanContainer');
+            const stayVideos = [
+                document.getElementById('stayVideo1'),
+                document.getElementById('stayVideo2'),
+                document.getElementById('stayVideo3'),
+                document.getElementById('stayVideo4'),
+                document.getElementById('stayVideo5'),
+                document.getElementById('stayVideo6'),
+                document.getElementById('stayVideo7'),
+                document.getElementById('stayVideo8'),
+                document.getElementById('stayVideo9'),
+                document.getElementById('stayVideo10'),
+                document.getElementById('stayVideo11'),
+                document.getElementById('stayVideo12'),
+                document.getElementById('stayVideo13'),
+                document.getElementById('stayVideo14'),
+                document.getElementById('stayVideo15'),
+                document.getElementById('stayVideo16'),
+                document.getElementById('stayVideo17'),
+                document.getElementById('stayVideo18')
+            ];
+            const hearVideo = document.getElementById('hearVideo');
+            const speakVideo = document.getElementById('speakVideo');
+            const statusDiv = document.getElementById('status');
+            const aiResponse = document.getElementById('aiResponse');
+            const typingCursor = document.getElementById('typingCursor');
+            
+            // 获取新增的元素
+            const transcriptionText = document.getElementById('transcriptionText');
+            const manualInputBtn = document.getElementById('manualInputBtn');
+            
+            let currentStayVideoIndex = -1;
+            
+            let mediaRecorder;
+            let audioChunks = [];
+            let isRecording = false;
+            let audioContext;
+            let audioSource;
+            let scriptProcessor;
+            let socket;
+            let isAIResponding = false;
+            let shouldAbortResponse = false;
+            
+            // 新增：文本缓冲区和定时器
+            let textBuffer = "";
+            let textOutputTimer = null;
+            const CHAR_DELAY = 30; // 每个字符输出的延迟（毫秒）
+            let isTextOutputComplete = true; // 新增：跟踪文本输出是否完成
+            let lastFullResponse = ""; // 存储完整的响应文本用于重新播放
+            
+            // 存储转录文本和编辑状态
+            let currentTranscription = "";
+            let isEditingTranscription = false;
+            let originalTranscription = "";
+
+            // 新增：TTS状态跟踪
+            let isTTSPlaying = false;
+            let isTTSFailed = false;
+
+            // 修改：播放随机stay视频 - 优化版本
+            function playRandomStayVideo() {
+                // 隐藏所有stay视频
+                stayVideos.forEach(video => {
+                    video.style.display = 'none';
+                    video.pause();
+                });
+                
+                // 随机选择一个视频编号（排除当前正在播放的）
+                let randomIndex;
+                do {
+                    randomIndex = Math.floor(Math.random() * stayVideos.length);
+                } while (randomIndex === currentStayVideoIndex && stayVideos.length > 1);
+                
+                currentStayVideoIndex = randomIndex;
+                const selectedVideo = stayVideos[currentStayVideoIndex];
+                
+                // 显示并播放选中的视频
+                selectedVideo.style.display = 'block';
+                selectedVideo.play().catch(err => {
+                    console.error(`Stay视频播放失败:`, err);
+                    // 如果播放失败，延迟一段时间后重试
+                    setTimeout(playRandomStayVideo, 1000);
+                });
+            }
+
+            // 修改：初始化stay视频 - 优化版本
+            function initStayVideo() {
+                // 为每个stay视频设置结束事件
+                stayVideos.forEach(video => {
+                    video.addEventListener('ended', function() {
+                        console.log('视频播放结束，准备播放下一个随机视频');
+                        playRandomStayVideo();
+                    });
+                });
+                
+                // 开始播放第一个随机视频
+                playRandomStayVideo();
+            }
+
+            // 显示听音动画
+            function showHearingAnimation() {
+                // 隐藏所有stay视频
+                stayVideos.forEach(video => {
+                    video.style.display = 'none';
+                    video.pause();
+                });
+                
+                speakVideo.style.display = 'none';
+                speakVideo.pause();
+                speakVideo.currentTime = 0;
+                hearVideo.style.display = 'block';
+                hearVideo.play().catch(err => {
+                    console.error("听音视频播放失败:", err);
+                });
+            }
+
+            // 显示说话动画
+            function showSpeakingAnimation() {
+                // 隐藏所有stay视频
+                stayVideos.forEach(video => {
+                    video.style.display = 'none';
+                    video.pause();
+                });
+                
+                hearVideo.style.display = 'none';
+                hearVideo.pause();
+                hearVideo.currentTime = 0;
+                speakVideo.style.display = 'block';
+                speakVideo.play().catch(err => {
+                    console.error("说话视频播放失败:", err);
+                });
+            }
+
+            // 显示静息状态（随机stay视频）
+            function showStayVideo() {
+                hearVideo.style.display = 'none';
+                hearVideo.pause();
+                hearVideo.currentTime = 0;
+                speakVideo.style.display = 'none';
+                speakVideo.pause();
+                speakVideo.currentTime = 0;
+                
+                // 显示当前stay视频
+                if (currentStayVideoIndex >= 0 && currentStayVideoIndex < stayVideos.length) {
+                    const currentVideo = stayVideos[currentStayVideoIndex];
+                    currentVideo.style.display = 'block';
+                    
+                    // 如果当前视频没有在播放，重新开始播放
+                    if (currentVideo.paused) {
+                        currentVideo.play().catch(err => {
+                            console.error("Stay视频播放失败:", err);
+                        });
+                    }
+                } else {
+                    // 如果没有当前视频，随机选择一个
+                    playRandomStayVideo();
+                }
+            }
+            
+            // 新增：逐字输出函数
+            function outputTextCharacter() {
+                if (textBuffer.length > 0) {
+                    // 输出一个字符
+                    aiResponse.textContent += textBuffer.charAt(0);
+                    textBuffer = textBuffer.substring(1);
+                    
+                    // 自动滚动到底部
+                    aiResponse.scrollTop = aiResponse.scrollHeight;
+                    
+                    // 继续输出下一个字符
+                    textOutputTimer = setTimeout(outputTextCharacter, CHAR_DELAY);
+                } else {
+                    // 文本输出完成，清除定时器
+                    clearTimeout(textOutputTimer);
+                    textOutputTimer = null;
+                    isTextOutputComplete = true; // 标记文本输出完成
+                    
+                    // 停止AI响应效果（光标闪烁）
+                    stopAIResponseEffect();
+                    
+                    // 如果TTS播放失败或没有TTS播放，立即显示静息状态
+                    if (isTTSFailed || !isTTSPlaying) {
+                        showStayVideo();
+                    }
+                    // 如果TTS正在播放，等待TTS完成事件来显示静息状态
+                }
+            }
+            
+            // 新增：添加文本到缓冲区
+            function appendToBuffer(text) {
+                textBuffer += text;
+                
+                // 如果没有正在输出的定时器，则启动一个
+                if (!textOutputTimer) {
+                    isTextOutputComplete = false; // 标记文本输出开始
+                    showSpeakingAnimation(); // 显示说话动画 - 只在开始输出文字时显示
+                    outputTextCharacter();
+                }
+            }
+            
+            // 新增：清空文本缓冲区
+            function clearTextBuffer() {
+                textBuffer = "";
+                if (textOutputTimer) {
+                    clearTimeout(textOutputTimer);
+                    textOutputTimer = null;
+                }
+                isTextOutputComplete = true; // 标记文本输出完成
+            }
+            
+            // 检查浏览器是否支持录音
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert('您的浏览器不支持录音功能，请使用现代浏览器如Chrome、Firefox等。');
+            }
+            
+            // 开始录音
+            function startRecording() {
+                if (isRecording) return;
+                
+                // 如果有AI正在响应，设置中断标志
+                if (isAIResponding) {
+                    shouldAbortResponse = true;
+                    if (socket && socket.connected) {
+                        socket.emit('abort_response');
+                    }
+                    // 清空当前响应
+                    aiResponse.textContent = '';
+                    clearTextBuffer(); // 清空文本缓冲区
+                    stopAIResponseEffect();
+                    showStayVideo();
+                }
+                
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(stream => {
+                        startRealtimeRecording(stream);
+                        
+                        isRecording = true;
+                        statusDiv.textContent = '🎤 录音中...';
+                        statusDiv.className = 'status recording';
+                        aiResponse.textContent = '';
+                        clearTextBuffer(); // 清空文本缓冲区
+                        
+                        // 清空转录文本
+                        transcriptionText.textContent = '';
+                        
+                        // 显示听音动画
+                        showHearingAnimation();
+                        
+                    })
+                    .catch(error => {
+                        console.error('获取麦克风权限失败:', error);
+                        statusDiv.textContent = '❌ 无法访问麦克风，请检查权限设置';
+                        statusDiv.className = 'status';
+                    });
+            }
+            
+            // 停止录音
+            function stopRecording() {
+                if (!isRecording) return;
+                
+                stopRealtimeRecording();
+                
+                isRecording = false;
+                statusDiv.textContent = '🔄 处理中...';
+                statusDiv.className = 'status processing';
+                
+                // 停止听音动画，显示静息状态
+                showStayVideo();
+            }
+            
+            // 实时流式传输方式 - 开始录音
+            function startRealtimeRecording(stream) {
+                // 初始化Socket.IO连接
+                socket = io('http://localhost:5000', {
+                    transports: ['websocket']
+                });
+                
+                socket.on('connect', () => {
+                    console.log('Socket.IO连接已建立');
+                    // 向服务器发送开始录音事件和选择的模型
+                    socket.emit('start_recording', {
+                        model: 'LongCat-Flash-Chat' // 使用默认模型
+                    });
+                });
+                
+                socket.on('recording_started', (data) => {
+                    statusDiv.textContent = '🎤 录音中（实时模式）...';
+                });
+                
+                socket.on('transcription_result', (data) => {
+                    if (data.error) {
+                        statusDiv.textContent = `错误: ${data.error}`;
+                        statusDiv.className = 'status';
+                        transcriptionText.textContent = "识别失败，请重试";
+                    } else {
+                        statusDiv.textContent = '✅ 转录完成，可编辑文本';
+                        statusDiv.className = 'status';
+                        
+                        // 显示转录文本
+                        currentTranscription = data.text;
+                        transcriptionText.textContent = currentTranscription;
+                        originalTranscription = currentTranscription;
+                        
+                        // 设置焦点和样式提示
+                        setupTranscriptionFocus();
+                    }
+                });
+                
+                // 新增：用户确认文本事件处理
+                socket.on('user_confirmed_text_ack', (data) => {
+                    statusDiv.textContent = '🔄 正在生成AI回复...';
+                    statusDiv.className = 'status processing';
+                    // 重置TTS状态
+                    isTTSPlaying = false;
+                    isTTSFailed = false;
+                    // 保持静息状态，等待文字输出
+                    showStayVideo();
+                });
+                
+                socket.on('ai_response_start', (data) => {
+                    startAIResponseEffect();
+                    aiResponse.textContent = ''; // 清空之前的响应
+                    clearTextBuffer(); // 清空文本缓冲区
+                    lastFullResponse = ""; // 重置完整响应
+                    // 重置TTS状态
+                    isTTSPlaying = false;
+                    isTTSFailed = false;
+                    // 保持静息状态，等待文字输出
+                    showStayVideo();
+                });
+                
+                // 修改这里：不再使用流式输出，而是等待完整文本
+                socket.on('ai_response_complete', (data) => {
+                    // 这里我们收到完整的响应文本，开始逐字显示
+                    if (data.full_text) {
+                        lastFullResponse = data.full_text;
+                        // 开始逐字显示文本
+                        appendToBuffer(data.full_text);
+                    }
+                    // 注意：这里不停止响应效果，因为文本输出可能还在进行
+                    statusDiv.textContent = '✅ 回答完成';
+                    statusDiv.className = 'status';
+                });
+                
+                // TTS相关事件
+                socket.on('tts_generating', (data) => {
+                    // 当开始生成语音时，保持静息状态
+                    // 说话动画会在文字输出时自动显示
+                    isTTSPlaying = true;
+                    isTTSFailed = false;
+                    showStayVideo();
+                });
+                
+                socket.on('tts_playing', (data) => {
+                    // 当开始播放语音时，显示说话动画
+                    // 但只有在有文字输出时才显示，否则保持静息状态
+                    isTTSPlaying = true;
+                    isTTSFailed = false;
+                    if (!isTextOutputComplete) {
+                        showSpeakingAnimation();
+                    }
+                });
+                
+                socket.on('tts_complete', (data) => {
+                    // TTS播放完成
+                    isTTSPlaying = false;
+                    // 只有当文本输出也完成时才显示静息状态
+                    if (isTextOutputComplete) {
+                        showStayVideo();
+                    }
+                });
+                
+                socket.on('tts_error', (data) => {
+                    // TTS出错时
+                    isTTSPlaying = false;
+                    isTTSFailed = true;
+                    // 如果文本输出完成了，显示静息状态
+                    if (isTextOutputComplete) {
+                        showStayVideo();
+                    }
+                });
+                
+                socket.on('error', (data) => {
+                    console.error('Socket.IO错误:', data.message);
+                    statusDiv.textContent = `❌ ${data.message}`;
+                    statusDiv.className = 'status';
+                    stopAIResponseEffect();
+                    showStayVideo(); // 显示静息状态
+                });
+                
+                socket.on('disconnect', () => {
+                    console.log('Socket.IO连接已关闭');
+                    stopAIResponseEffect();
+                    showStayVideo(); // 显示静息状态
+                });
+                
+                socket.on('response_aborted', () => {
+                    console.log('响应已中止');
+                    stopAIResponseEffect();
+                    showStayVideo();
+                    clearTextBuffer(); // 清空文本缓冲区
+                    shouldAbortResponse = false;
+                    statusDiv.textContent = '⏹️ 响应已中止';
+                    statusDiv.className = 'status';
+                });
+                
+                // 设置音频处理上下文
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000 // 设置采样率与后端一致
+                });
+                
+                audioSource = audioContext.createMediaStreamSource(stream);
+                scriptProcessor = audioContext.createScriptProcessor(1024, 1, 1);
+                
+                audioSource.connect(scriptProcessor);
+                scriptProcessor.connect(audioContext.destination);
+                
+                // 处理音频数据
+                scriptProcessor.onaudioprocess = (event) => {
+                    if (socket && socket.connected && isRecording) {
+                        const inputBuffer = event.inputBuffer;
+                        const channelData = inputBuffer.getChannelData(0);
+                        
+                        // 将Float32Array转换为可以传输的格式
+                        const floatArray = new Float32Array(channelData.length);
+                        floatArray.set(channelData);
+                        
+                        // 使用ArrayBuffer发送二进制数据
+                        socket.emit('audio_data', {
+                            chunk: Array.from(floatArray.slice(0, 1024)) // 发送前1024个样本
+                        });
+                    }
+                };
+            }
+            
+            // 实时流式传输方式 - 停止录音
+            function stopRealtimeRecording() {
+                if (socket && socket.connected) {
+                    socket.emit('stop_recording');
+                }
+                
+                if (audioContext) {
+                    audioContext.close();
+                }
+            }
+            
+            // 启动AI响应效果
+            function startAIResponseEffect() {
+                isAIResponding = true;
+                typingCursor.style.display = 'inline-block';
+            }
+            
+            // 停止AI响应效果
+            function stopAIResponseEffect() {
+                isAIResponding = false;
+                typingCursor.style.display = 'none';
+            }
+            
+            // 监听转录文本区域的键盘事件
+            transcriptionText.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    
+                    const editedText = transcriptionText.textContent.trim();
+                    if (!editedText) {
+                        statusDiv.textContent = '❌ 文本不能为空';
+                        statusDiv.className = 'status';
+                        return;
+                    }
+                    
+                    currentTranscription = editedText;
+                    statusDiv.textContent = '🔄 正在生成AI回复...';
+                    statusDiv.className = 'status processing';
+                    
+                    // 发送编辑后的文本到后端
+                    if (socket && socket.connected) {
+                        socket.emit('user_confirmed_text', {
+                            text: editedText,
+                            model: 'LongCat-Flash-Chat' // 使用固定模型
+                        });
+                    } else {
+                        statusDiv.textContent = '❌ 连接已断开，请刷新页面';
+                        statusDiv.className = 'status';
+                    }
+                    
+                    // 移除焦点
+                    transcriptionText.blur();
+                    
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    
+                    // 取消编辑，恢复原始文本
+                    transcriptionText.textContent = originalTranscription;
+                    transcriptionText.blur();
+                    
+                    statusDiv.textContent = '编辑已取消';
+                    setTimeout(() => {
+                        statusDiv.textContent = '✅ 转录完成，可编辑文本';
+                    }, 2000);
+                }
+            });
+            
+            // 监听焦点事件
+            transcriptionText.addEventListener('focus', function() {
+                isEditingTranscription = true;
+                this.style.background = 'rgba(16, 163, 127, 0.15)';
+            });
+            
+            transcriptionText.addEventListener('blur', function() {
+                isEditingTranscription = false;
+                this.style.background = 'rgba(255, 255, 255, 0.1)';
+            });
+            
+            // 手动输入按钮事件
+            manualInputBtn.addEventListener('click', function() {
+                const userText = prompt('请输入您的问题:');
+                if (userText && userText.trim()) {
+                    statusDiv.textContent = '🔄 正在生成AI回复...';
+                    statusDiv.className = 'status processing';
+                    
+                    if (socket && socket.connected) {
+                        socket.emit('user_confirmed_text', {
+                            text: userText.trim(),
+                            model: 'LongCat-Flash-Chat'
+                        });
+                    } else {
+                        alert('连接已断开，请刷新页面');
+                    }
+                }
+            });
+            
+            // 空格键事件监听
+            document.addEventListener('keydown', function(event) {
+                if (event.code === 'Space' && !isRecording && !event.repeat) {
+                    event.preventDefault(); // 防止空格键滚动页面
+                    // 如果正在编辑转录文本，先保存编辑
+                    if (isEditingTranscription) {
+                        transcriptionText.blur();
+                    }
+                    startRecording();
+                }
+            });
+            
+            document.addEventListener('keyup', function(event) {
+                if (event.code === 'Space' && isRecording) {
+                    event.preventDefault();
+                    stopRecording();
+                }
+            });
+            
+            // 防止空格键滚动页面
+            window.addEventListener('keydown', function(e) {
+                if(e.keyCode === 32 && e.target === document.body) {
+                    e.preventDefault();
+                }
+            });
+            
+            // 初始化播放随机stay视频
+            initStayVideo();
+            
+            // ==================== 抽奖逻辑 ====================
+            
+            // 获取抽奖相关元素
+            const lotteryButton = document.getElementById('lotteryButton');
+            const lotteryModal = document.getElementById('lotteryModal');
+            const closeLottery = document.getElementById('closeLottery');
+            const spinButton = document.getElementById('spinButton');
+            const lotteryWheel = document.getElementById('lotteryWheel');
+            const lotteryResult = document.getElementById('lotteryResult');
+            const confirmResult = document.getElementById('confirmResult');
+            
+            // 奖品库存元素
+            const keychainCount = document.getElementById('keychainCount');
+            const mousepadCount = document.getElementById('mousepadCount');
+            const cupCount = document.getElementById('cupCount');
+            
+            // 奖品库存
+            let prizes = {
+                keychain: 98,
+                mousepad: 46,
+                cup: 1,
+                candy: Infinity // 不限量
+            };
+            
+            // 从本地存储加载库存
+            function loadPrizesFromStorage() {
+                const savedPrizes = localStorage.getItem('lotteryPrizes');
+                if (savedPrizes) {
+                    const parsed = JSON.parse(savedPrizes);
+                    prizes.keychain = parsed.keychain || 98;
+                    prizes.mousepad = parsed.mousepad || 46;
+                    prizes.cup = parsed.cup || 1;
+                    updatePrizeDisplay();
+                }
+            }
+            
+            // 保存库存到本地存储
+            function savePrizesToStorage() {
+                localStorage.setItem('lotteryPrizes', JSON.stringify({
+                    keychain: prizes.keychain,
+                    mousepad: prizes.mousepad,
+                    cup: prizes.cup
+                }));
+            }
+            
+            // 更新奖品显示
+            function updatePrizeDisplay() {
+                keychainCount.textContent = prizes.keychain;
+                mousepadCount.textContent = prizes.mousepad;
+                cupCount.textContent = prizes.cup;
+                
+                // 如果某个奖品库存为0，禁用对应的转盘区域
+                document.querySelectorAll('.prize-item').forEach(item => {
+                    const prizeType = item.dataset.prize;
+                    if (prizes[prizeType] === 0) {
+                        item.style.opacity = '0.5';
+                        item.style.pointerEvents = 'none';
+                    }
+                });
+            }
+            
+            // 打开抽奖模态框
+            lotteryButton.addEventListener('click', function() {
+                loadPrizesFromStorage();
+                lotteryModal.style.display = 'flex';
+            });
+            
+            // 关闭抽奖模态框
+            closeLottery.addEventListener('click', function() {
+                lotteryModal.style.display = 'none';
+                resetLottery();
+            });
+            
+            // 点击模态框外部关闭
+            lotteryModal.addEventListener('click', function(e) {
+                if (e.target === lotteryModal) {
+                    lotteryModal.style.display = 'none';
+                    resetLottery();
+                }
+            });
+            
+            // 抽奖逻辑
+            let isSpinning = false;
+            
+            spinButton.addEventListener('click', function() {
+                if (isSpinning) return;
+                
+                // 检查是否还有奖品
+                const availablePrizes = Object.keys(prizes).filter(prize => 
+                    prize === 'candy' || prizes[prize] > 0
+                );
+                
+                if (availablePrizes.length === 0) {
+                    lotteryResult.textContent = '所有奖品已抽完！';
+                    return;
+                }
+                
+                isSpinning = true;
+                lotteryResult.textContent = '抽奖中...';
+                lotteryResult.className = 'lottery-result';
+                confirmResult.style.display = 'none';
+                
+                // 计算概率分布
+                const probabilities = calculateProbabilities();
+                
+                // 根据概率随机选择奖品
+                const selectedPrize = selectPrizeByProbability(probabilities);
+                
+                // 计算转盘停止的角度（确保停在选中奖品的位置）
+                const prizeAngles = {
+                    keychain: [22.5, 202.5, 337.5], // 钥匙扣在转盘上的角度
+                    mousepad: [67.5, 247.5],        // 鼠标垫在转盘上的角度
+                    cup: [112.5],                   // 水杯在转盘上的角度
+                    candy: [157.5, 292.5]           // 糖果在转盘上的角度
+                };
+                
+                const targetAngle = prizeAngles[selectedPrize][0]; // 取第一个出现的位置
+                const fullRotations = 5; // 完整旋转圈数
+                const finalRotation = fullRotations * 360 + (360 - targetAngle);
+                
+                // 执行转盘动画
+                lotteryWheel.style.transform = `rotate(${finalRotation}deg)`;
+                
+                // 动画结束后显示结果
+                setTimeout(() => {
+                    isSpinning = false;
+                    displayLotteryResult(selectedPrize);
+                }, 4000);
+            });
+            
+            // 计算概率分布
+            function calculateProbabilities() {
+                const totalRemaining = prizes.keychain + prizes.mousepad + prizes.cup;
+                
+                // 如果限量奖品都抽完了，100%概率是糖果
+                if (totalRemaining === 0) {
+                    return { candy: 1 };
+                }
+                
+                // 基础概率分布
+                const probabilities = {
+                    keychain: prizes.keychain / totalRemaining * 0.7, // 70%的概率分配给限量奖品
+                    mousepad: prizes.mousepad / totalRemaining * 0.7,
+                    cup: prizes.cup / totalRemaining * 0.7,
+                    candy: 0.3 // 30%的概率是糖果
+                };
+                
+                // 调整水杯概率（因为只有一个，需要特殊处理）
+                if (prizes.cup > 0) {
+                    // 增加水杯的概率，使其更容易被抽中（但不超过20%）
+                    const cupBonus = Math.min(0.2, 0.7 / totalRemaining);
+                    probabilities.cup += cupBonus;
+                    
+                    // 从其他奖品中减去增加的概率
+                    const reduction = cupBonus / 2;
+                    probabilities.keychain = Math.max(0, probabilities.keychain - reduction);
+                    probabilities.mousepad = Math.max(0, probabilities.mousepad - reduction);
+                }
+                
+                return probabilities;
+            }
+            
+            // 根据概率选择奖品
+            function selectPrizeByProbability(probabilities) {
+                const random = Math.random();
+                let cumulative = 0;
+                
+                for (const [prize, probability] of Object.entries(probabilities)) {
+                    cumulative += probability;
+                    if (random <= cumulative) {
+                        return prize;
+                    }
+                }
+                
+                // 默认返回糖果（理论上不会执行到这里）
+                return 'candy';
+            }
+            
+            // 显示抽奖结果
+            function displayLotteryResult(prize) {
+                const prizeNames = {
+                    keychain: '🎉 恭喜您获得【定制钥匙扣】一个！',
+                    mousepad: '🎉 恭喜您获得【精美鼠标垫】一个！',
+                    cup: '🎊 超级大奖！恭喜您获得【限量水杯】一个！',
+                    candy: '🎉 恭喜您获得【饼干糖果】一份！'
+                };
+                
+                const prizeIcons = {
+                    keychain: '🔑',
+                    mousepad: '🖱️',
+                    cup: '🏆',
+                    candy: '🍬'
+                };
+                
+                lotteryResult.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <span style="font-size: 2rem;">${prizeIcons[prize]}</span>
+                        <span>${prizeNames[prize]}</span>
+                    </div>
+                `;
+                lotteryResult.className = 'lottery-result win';
+                
+                // 如果不是糖果，减少库存
+                if (prize !== 'candy' && prizes[prize] > 0) {
+                    prizes[prize]--;
+                    updatePrizeDisplay();
+                    savePrizesToStorage();
+                }
+                
+                // 显示确认按钮
+                confirmResult.style.display = 'block';
+                confirmResult.onclick = function() {
+                    lotteryModal.style.display = 'none';
+                    resetLottery();
+                    alert('请前往招新处领取您的奖品！');
+                };
+            }
+            
+            // 重置抽奖状态
+            function resetLottery() {
+                lotteryWheel.style.transform = 'rotate(0deg)';
+                lotteryResult.textContent = '';
+                lotteryResult.className = 'lottery-result';
+                confirmResult.style.display = 'none';
+                isSpinning = false;
+            }
+            
+            // 初始化奖品显示
+            updatePrizeDisplay();
+        });
+    </script>
+</body>
+</html>
